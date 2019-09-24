@@ -4,9 +4,9 @@ name := "franz"
 
 version := "0.3.16"
 
-crossScalaVersions := Seq("2.10.4", "2.11.5")
+crossScalaVersions := Seq("2.10.4", "2.11.5", "2.12.4", "2.13.1")
 
-scalaVersion := "2.10.4"
+scalaVersion := "2.13.1"
 
 resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 
@@ -14,9 +14,9 @@ resolvers += "Typesafe Repo" at "http://repo.typesafe.com/typesafe/releases/"
 
 libraryDependencies += "com.amazonaws" % "aws-java-sdk-sqs" % "1.10.16"
 
-libraryDependencies += "com.typesafe.play" %% "play-json" % "2.3.7"
+libraryDependencies += "com.typesafe.play" %% "play-json" % "2.7.4"
 
-libraryDependencies += "com.typesafe.play" %% "play-iteratees" % "2.3.7"
+libraryDependencies += "com.typesafe.play" %% "play-streams" % "2.7.3"
 
 publishMavenStyle := true
 

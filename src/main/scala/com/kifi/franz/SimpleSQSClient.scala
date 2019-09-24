@@ -10,7 +10,7 @@ import com.amazonaws.handlers.AsyncHandler
 import play.api.libs.json.{JsValue, Format}
 import scala.concurrent.{Future, Promise, ExecutionContext}
 import scala.util.{Success, Failure}
-import scala.collection.JavaConversions._
+import scala.jdk.CollectionConverters._
 
 class SimpleSQSClient(credentialProvider: AWSCredentialsProvider, region: Regions, buffered: Boolean) extends SQSClient {
 
@@ -53,7 +53,7 @@ class SimpleSQSClient(credentialProvider: AWSCredentialsProvider, region: Region
       def onError(exception: Exception) = deletedQueues.failure(exception)
       def onSuccess(req: ListQueuesRequest, response: ListQueuesResult) = {
         val queueUrls = response.getQueueUrls()
-        Future.sequence(queueUrls.map(deleteQueueByUrl)) onComplete {
+        Future.sequence(queueUrls.asScala.map(deleteQueueByUrl)) onComplete {
             case Failure(exception) => deletedQueues.failure(exception)
             case Success(confirmations) => deletedQueues.success(confirmations.length)
         }

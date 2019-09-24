@@ -1,10 +1,8 @@
 package com.kifi.franz
 
-import play.api.libs.iteratee.Enumerator
-
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.concurrent.duration.{FiniteDuration, SECONDS}
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
 import com.amazonaws.services.sqs.AmazonSQSAsync
 import com.amazonaws.services.sqs.model._
@@ -108,7 +106,7 @@ trait SQSQueue[T]{
     val p = Promise[(Seq[MessageId], Seq[MessageId])]()
     sqs.sendMessageBatchAsync(request, new AsyncHandler[SendMessageBatchRequest,SendMessageBatchResult]{
       def onError(exception: Exception) = p.failure(exception)
-      def onSuccess(req: SendMessageBatchRequest, res: SendMessageBatchResult) = p.success((res.getSuccessful.asScala.map(m => MessageId(m.getMessageId)), res.getFailed.asScala.map(m => MessageId(m.getId))))
+      def onSuccess(req: SendMessageBatchRequest, res: SendMessageBatchResult) = p.success((res.getSuccessful.asScala.toSeq.map(m => MessageId(m.getMessageId)), res.getFailed.asScala.toSeq.map(m => MessageId(m.getId))))
     })
     p.future
   }
@@ -116,8 +114,7 @@ trait SQSQueue[T]{
    def attributes(attributeNames:Seq[String]):Future[Map[String,String]]={
     val request = new GetQueueAttributesRequest()
     request.setQueueUrl(queueUrl)
-    import scala.collection.JavaConversions._
-    request.setAttributeNames(attributeNames)
+    request.setAttributeNames(attributeNames.asJavaCollection)
 
     val p = Promise[Map[String,String]]()
     sqs.getQueueAttributesAsync(request, new AsyncHandler[GetQueueAttributesRequest, GetQueueAttributesResult]{
@@ -149,7 +146,7 @@ trait SQSQueue[T]{
       def onSuccess(req: ReceiveMessageRequest, response: ReceiveMessageResult) = {
         try {
           val rawMessages = response.getMessages
-          p.success(rawMessages.asScala.map { rawMessage =>
+          p.success(rawMessages.asScala.toSeq.map { rawMessage =>
             SQSMessage[T](
               id = MessageId(rawMessage.getMessageId),
               body = rawMessage.getBody,
@@ -194,28 +191,5 @@ trait SQSQueue[T]{
   def next(waitTimeout: FiniteDuration = DefaultWaitTimeout)(implicit ec: ExecutionContext): Future[Option[SQSMessage[T]]] = nextBatchRequestWithLock(1, FiniteDuration(0, SECONDS), waitTimeout).map(_.headOption)
   def nextWithLock(lockTimeout: FiniteDuration, waitTimeout: FiniteDuration = DefaultWaitTimeout)(implicit ec: ExecutionContext): Future[Option[SQSMessage[T]]] = nextBatchRequestWithLock(1, lockTimeout, waitTimeout).map(_.headOption)
   def nextBatch(maxBatchSize: Int, waitTimeout: FiniteDuration = DefaultWaitTimeout)(implicit ec: ExecutionContext): Future[Seq[SQSMessage[T]]] = nextBatchWithLock(maxBatchSize, FiniteDuration(0, SECONDS), waitTimeout)
-  def enumerator(waitTimeout: FiniteDuration = DefaultWaitTimeout)(implicit ec: ExecutionContext): Enumerator[SQSMessage[T]] = Enumerator.repeatM[SQSMessage[T]]{ loopFuture(next(waitTimeout)(ec)) }
-  def enumeratorWithLock(lockTimeout: FiniteDuration, waitTimeout: FiniteDuration = DefaultWaitTimeout)(implicit ec: ExecutionContext): Enumerator[SQSMessage[T]] = Enumerator.repeatM[SQSMessage[T]]{ loopFuture(nextWithLock(lockTimeout, waitTimeout)) }
-  def batchEnumerator(maxBatchSize:Int, waitTimeout: FiniteDuration = DefaultWaitTimeout)(implicit ec: ExecutionContext): Enumerator[Seq[SQSMessage[T]]] = Enumerator.repeatM[Seq[SQSMessage[T]]]{ loopFutureBatch(nextBatch(maxBatchSize, waitTimeout)) }
-  def batchEnumeratorWithLock(maxBatchSize:Int, lockTimeout: FiniteDuration, waitTimeout: FiniteDuration = DefaultWaitTimeout)(implicit ec: ExecutionContext): Enumerator[Seq[SQSMessage[T]]] = Enumerator.repeatM[Seq[SQSMessage[T]]]{ loopFutureBatch(nextBatchWithLock(maxBatchSize, lockTimeout, waitTimeout)) }
-
-  private def loopFuture[A](f: => Future[Option[A]], promise: Promise[A] = Promise[A]())(implicit ec: ExecutionContext): Future[A] = {
-    f.onComplete {
-      case util.Success(Some(res)) => promise.success(res)
-      case util.Success(None) => loopFuture(f, promise)
-      case util.Failure(ex) => promise.failure(ex)
-    }
-    promise.future
-  }
-
-  private def loopFutureBatch[A](f: => Future[Seq[A]], promise: Promise[Seq[A]] = Promise[Seq[A]]())(implicit ec: ExecutionContext): Future[Seq[A]] = {
-    f.onComplete {
-      case util.Success(res) if res.nonEmpty => promise.success(res)
-      case util.Success(res) if res.isEmpty => loopFutureBatch(f, promise)
-      case util.Failure(ex) => promise.failure(ex)
-    }
-    promise.future
-  }
-
 }
 
