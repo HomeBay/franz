@@ -21,6 +21,7 @@ libraryDependencies += "com.typesafe.play" %% "play-streams" % "2.7.3"
 publishMavenStyle := true
 
 publishTo := Some("S3 Artifacts" at "s3://homebay-artifacts/ext-releases-local")
+
 publishArtifact in Test := false
 
 pomIncludeRepository := { _ => false }
