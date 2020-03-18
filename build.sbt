@@ -20,14 +20,7 @@ libraryDependencies += "com.typesafe.play" %% "play-streams" % "2.7.3"
 
 publishMavenStyle := true
 
-publishTo := {
-  val nexus = "https://oss.sonatype.org/"
-  if (isSnapshot.value)
-    Some("snapshots" at nexus + "content/repositories/snapshots")
-  else
-    Some("releases"  at nexus + "service/local/staging/deploy/maven2")
-}
-
+publishTo := Some("S3 Artifacts" at "s3://homebay-artifacts/ext-releases-local")
 publishArtifact in Test := false
 
 pomIncludeRepository := { _ => false }
